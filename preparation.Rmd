@@ -1,0 +1,443 @@
+---
+title: "Final Presentation"
+author: "Chris Kardish and Marie Agosta"
+date: "November 18, 2016"
+output: pdf_document
+---
+
+This is where we clean and prepare the data
+
+```{r}
+
+#rm(list = ls()) this command clears your environment
+#setwd('C:/Users/Chris/Documents/GitHub/final_project')
+#setwd('C:/Users/Chris/Documents/R/col_soc_science')
+
+source("final_cleaning.R")
+
+# calling appropriate packages 
+
+library(foreign) 
+library(survey)
+library(rockchalk)
+
+# R will crash if a primary sampling unit (psu) has a single observation
+# so we set R to produce conservative standard errors instead of crashing
+options( survey.lonely.psu = "adjust" )
+
+#import data from the ANES
+anes <- read.dta("anes_timeseries_2012_Stata12.dta")
+
+# to delete ages that do not fit into any of our generations, we delete the unnecesary ages
+#table(anes$dem_age_r_x) #age
+anes <- anes[!(anes$dem_age_r_x <= -2 | anes$dem_age_r_x >= 88),] 
+
+#We renamed the levels pertaining to if someone voted and then we coded them to be binary, keeping only Yes/no, changes the variable to a numeric dummy, with 1 as "Yes"
+#table(anes$postvote_rvote)
+levels(anes$postvote_rvote) <- c("Refused", "Don't know", "Incomplete", "Nonresponsive", "Missing", "Inapplicable", "No", "No", "No", "Yes")
+anes <- anes[(anes$postvote_rvote == "Yes" | anes$postvote_rvote == "No"),] 
+anes$postvote_rvote <-  droplevels(anes$postvote_rvote)
+anes$postvote_rvote <- as.numeric(anes$postvote_rvote) 
+anes$postvote_rvote[anes$postvote_rvote == 1] <- 0
+anes$postvote_rvote[anes$postvote_rvote == 2] <- 1
+
+#We renamed the levels pertaining to education and recoded them as numeric ranging from 
+#1-5 (1 being below high school) and 5 (graduate education)
+#table(anes$dem_edugroup_x) #education
+levels(anes$dem_edugroup_x) <- c("Refused", "Don't know", "Data missing", "Below high school", "High school", "Some post-high", "Bachelor", "Graduate") 
+anes <- anes[(anes$dem_edugroup_x == "Below high school" | 
+                anes$dem_edugroup_x == "High school" | 
+                anes$dem_edugroup_x == "Some post-high" | 
+                anes$dem_edugroup_x == "Bachelor" |
+                anes$dem_edugroup_x == "Graduate"),] #keeps only these groups
+anes$dem_edugroup_x <-  droplevels(anes$dem_edugroup_x)
+anes$dem_edugroup_x <- as.numeric(anes$dem_edugroup_x)
+
+#We renamed the labels pertaining to race, removed all missing data, and created dummies of black
+#and hispanic
+#table(anes$dem_raceeth_x) #race
+levels(anes$dem_raceeth_x) <- c("Data missing", "White", "Black", "Asian" , "Native American or Alaska Native", "Hispanic","Other") 
+anes <- anes[!(anes$dem_raceeth_x == "Data missing"),] 
+anes$black <- anes$dem_raceeth_x == "Black"
+anes$black <- as.numeric(anes$black)
+anes$hispanic <- anes$dem_raceeth_x == "Hispanic"
+anes$hispanic <- as.numeric(anes$hispanic)
+
+
+#We renamed the labels pertaining to voting in the 2008 election, dropped NA ones, and recoded #the remaining yes and no to be 1 or 0. 
+#table(anes$interest_voted2008) #voting in past election (2008)
+levels(anes$interest_voted2008) <- c("Refused", "Don't know", "Yes", "No")
+anes <- anes[(anes$interest_voted2008 == "Yes" | anes$interest_voted2008 == "No"),] 
+anes$interest_voted2008 <-  droplevels(anes$interest_voted2008)
+anes$interest_voted2008 <- as.numeric(anes$interest_voted2008) 
+anes$interest_voted2008[anes$interest_voted2008 == 2] <- 0
+
+#We created a dummy variable for gender, with 1 as "female"
+#table(anes$gender_respondent_x) #gender
+anes$female <- anes$gender_respondent_x == "2. Female" #creates dummy gender #variable
+anes$female <- as.numeric(anes$female) 
+
+#table(anes$inc_incgroup_pre) #income groups
+anes <- anes[!(anes$inc_incgroup_pre == "-9. Refused"),] 
+anes <- anes[!(anes$inc_incgroup_pre == "-8. Don't know"),] 
+anes <- anes[!(anes$inc_incgroup_pre == "-2. Missing; IWR mistakenly entered '2' in place of DK code for total income"),] 
+anes$inc_incgroup_pre <- combineLevels(anes$inc_incgroup_pre, c("01. Under $5,000", "02. $5,000-$9,999", "03. $10,000-$12,499", "04. $12,500-$14,999", "05. $15,000-$17,499", "06. $17,500-$19,999"), "Under 20k")
+anes$inc_incgroup_pre <- combineLevels(anes$inc_incgroup_pre, c("07. $20,000-$22,499", "08. $22,500-$24,999", "09. $25,000-$27,499", "10. $27,500-$29,999", "11. $30,000-$34,999", "12. $35,000-$39,999", "13. $40,000-$44,999"), "20k-45k")
+anes$inc_incgroup_pre <- combineLevels(anes$inc_incgroup_pre, c("14. $45,000-$49,999", "15. $50,000-$54,999", "16. $55,000-$59,999", "17. $60,000-$64,999"), "45k-65k")
+anes$inc_incgroup_pre <- combineLevels(anes$inc_incgroup_pre, c("18. $65,000-$69,999", "19. $70,000-$74,999", "20. $75,000-$79,999", "21. $80,000-$89,999"), "65k-90k")
+anes$inc_incgroup_pre <- combineLevels(anes$inc_incgroup_pre, c("22. $90,000-$99,999", "23. $100,000-$109,999", "24. $110,000-$124,999"), "90k-125k")
+anes$inc_incgroup_pre <- combineLevels(anes$inc_incgroup_pre, c("25. $125,000-$149,999", "26. $150,000-$174,999", "27. $175,000-$249,999"), "125-250k")
+levels(anes$inc_incgroup_pre) <- c("Under 20k", "20k-45k", "45k-65k", "65k-90k", "90k-125k", "125-250k", "28. $250,000 or more")
+anes$income <- as.numeric(anes$inc_incgroup_pre)
+
+
+#To simplify our task we create a smaller data set that includes all relevant variables
+#, which are listed below the code. 
+
+anes_small <- data.frame(anes$caseid, anes$dem_age_r_x, anes$dem_edugroup_x, anes$black, anes$hispanic, anes$income, anes$female, anes$interest_voted2008, anes$postvote_rvote, anes$weight_full, anes$psu_full, anes$strata_full)
+
+# We named the variables so they are very easy to understand 
+colnames(anes_small) <- c("caseID", "age", "education", "black","hispanic", "income", "female", "vote_2008", "vote_2012", "weights", "psu", "strata" )
+
+```
+
+Creating the age-band subsets from the smaller ANES data set that contains only 
+variables of interest.
+
+```{r}
+
+anes_genY <- subset(anes_small, anes$dem_age_r_x > 17 & anes$dem_age_r_x < 33) 
+#creates Millennial subset 
+anes_genX <- subset(anes_small, anes$dem_age_r_x > 32 & anes$dem_age_r_x < 48) 
+#creates Generation X subset 
+anes_boomer <- subset(anes_small, anes$dem_age_r_x > 47 & anes$dem_age_r_x < 67) 
+#creates Baby Boomer subset 
+anes_silent <- subset(anes_small, anes$dem_age_r_x > 66 & anes$dem_age_r_x < 88) 
+#creates Silent Generation subset
+
+#set up an objects to run with the logit models that allow for results to be 
+#statistically representative of the population through weighting 
+
+ANESdesign_genY <- svydesign(~psu ,  strata = ~strata , data = anes_genY , weights = ~weights, variables = NULL, nest = TRUE)
+
+ANESdesign_genX <- svydesign(~psu ,  strata = ~strata , data = anes_genX , weights = ~weights, variables = NULL, nest = TRUE)
+
+ANESdesign_boomer <- svydesign(~psu ,  strata = ~strata , data = anes_boomer, weights = ~weights, variables = NULL, nest = TRUE)
+
+ANESdesign_silent <- svydesign(~psu ,  strata = ~strata , data = anes_silent, weights = ~weights, variables = NULL, nest = TRUE)
+
+ANESdesign_overall <- svydesign(~psu ,  strata = ~strata , data = anes_small, weights = ~weights, variables = NULL, nest = TRUE)
+```
+
+Running logistic regression model with confidence intervals
+
+```{r}
+
+#Running a logit, generation by generation. Then looking at a summary of the results, follows by looking at and creating an object for the coeffs of the results. Then converting those results to probabilities by exp(ing) them 
+
+#Millennials
+M_genY <- svyglm(vote_2012 ~ education + female + vote_2008 + black + hispanic + income, design = ANESdesign_genY, family = "quasibinomial") 
+summary(M_genY)
+genY_coef <- coef(M_genY)
+exp(genY_coef)
+
+#Gen X
+M_genX <- svyglm(vote_2012 ~ education + female + vote_2008 + black + hispanic + income, design = ANESdesign_genX, family = "quasibinomial") 
+summary(M_genX)
+genX_coef <- coef(M_genX)
+exp(genX_coef)
+
+#Baby Boomers
+M_boomer <- svyglm(vote_2012 ~ education + female + vote_2008 + black + hispanic + income, design = ANESdesign_boomer, family = "quasibinomial") 
+summary(M_boomer)
+boomer_coef <- coef(M_boomer)
+exp(boomer_coef)
+
+#Silent
+M_silent <- svyglm(vote_2012 ~ education + female + vote_2008 + black + hispanic + income, design = ANESdesign_silent, family = "quasibinomial") 
+summary(M_silent)
+silent_coef <- coef(M_silent)
+exp(silent_coef)
+
+#overall data set
+M <- svyglm(vote_2012 ~ education + female + vote_2008 + black + hispanic + income, design = ANESdesign_overall, family = "quasibinomial") 
+summary(M)
+
+
+newdata1 <- with(anes_small, data.frame(education = 1:5, black = 0, hispanic = 0, income = 4, female = 0, vote_2008 = 1))
+
+  
+  
+#Looking at confidence intervals of parameter point estimates 
+
+confint(M_genY)
+confint(M_boomer)
+confint(M_genX)
+
+#Giving odds ratios with confidence intervals in a table 
+
+exp(cbind(OR = coef(M_genY), confint(M_genY)))
+
+#For presentation... because stargazer doesn't output to presenation 
+
+Millennials <- exp(cbind(OR = coef(M_genY), confint(M_genY)))
+Mill <- data.frame(Millennials)
+colnames(Mill) <- c("Predicted Probabilites", "Lower Bound", "Upper Bound") 
+library(knitr)
+
+kable(Mill)
+kable(Mill, align = 'c', digits = 2, caption = 'Predicted Probabilities for Millennials')
+
+```
+
+Code for stargazer table comparing odds-ratios of coefficients across models. 
+Not finished with it yet, though. 
+```{r}
+library(stargazer)
+
+#to look at the stargazer, try the one below, which uses "text." The one below only appears
+#when you knit to PDF.
+
+stargazer(M_genY, M_genX, M_boomer, M_silent, apply.coef = exp, type = 'text',
+          dep.var.labels = "Probability of voting in 2012", 
+          column.labels = c("Gen Y", "Gen X", "Boomers", "Silent"))
+
+stargazer(M_genY, M_genX, M_boomer, M_silent, apply.coef = exp,
+          dep.var.labels = "Probability of voting in 2012", 
+          column.labels = c("Gen Y", "Gen X", "Boomers", "Silent"))
+
+```
+
+Attempt at the simulation stuff he's into
+```{r}
+library(MASS)
+library(dplyr)
+library(Zelig)
+#Steps. 1) run model but using Zelig, which is able to use survey weights
+#2) use "setx" function to set the values for the simulation
+#3) run the simulation using the parameters you specified (sim)
+#4) plot using ci.plot
+
+#this is black millennial female at various levels of education and moderate income
+
+Z_genY <- zelig(vote_2012 ~ education + female + vote_2008 + black + hispanic + income, model = "logit.survey", weights=~weights, strata=~strata, data = anes_genY)
+setZ_genY_black <- setx(Z_genY, education = 1:5, black = 1, hispanic = 0, income = 3, 
+                        female = 1, vote_2008 = 0)
+simZ_genY_black <- sim(Z_genY, x = setZ_genY_black)
+ci.plot(simZ_genY_black, ylim = 0:1, ylab = "Probability of voting", xlab = "Education Level", 
+        main = "Black Millennial Woman", legcol = "black", leg = 1,) 
+
+#With Labels (that don't work... ) 
+ci.plot(simZ_genY_black, ylim = 0:1, ylab = "Probability of voting", xlab = "Education Level", axis(side = 1, at = 1:5, tick = TRUE, labels = c("Below HS", "HS", "Some post-HS", "B", "Masters", )
+
+                                                                         
+#same thing but a black baby boomer
+
+Z_boomer <- zelig(vote_2012 ~ education + female + vote_2008 + black + hispanic + income, model = "logit.survey", weights=~weights, strata=~strata, data = anes_boomer)
+<<<<<<< HEAD
+setZ_boomer_black <- setx(Z_genY, education = 1:5, black = 1, hispanic = 0, income = 3, 
+                          female = 1, vote_2008 = 0)
+simZ_boomer_black <- sim(Z_boomer, x = setZ_boomer_black)
+ci.plot(simZ_boomer_black, ylim = 0:1, ylab = "Probability of voting", 
+        main = "Black Baby Boomer Woman")
+=======
+setZ_boomer_black <- setx(Z_genY, education = 1:5, black = 1, hispanic = 0, income = 3, female = 1, vote_2008 = 0)
+simZ_boomer_black <- sim(Z_boomer, x = setZ_boomer_black)
+ci.plot(simZ_boomer_black, ylim = 0:1, ylab = "Probability of voting", xlab = "Education Level",
+        main = "Black Baby Boomer Woman", legcol = "black", leg = 1,)
+
+#With Labels (that don't work... )
+ci.plot(simZ_boomer_black, ylim = 0:1, ylab = "Probability of voting", xlab = "Education Level", axis(side = 1, at = 1:5, tick = TRUE, 
+        labels = c("Below HS", "HS", "Some post-HS", "Bacholer", "Masters", )
+
+>>>>>>> origin/master
+#CONCLUSION: plots look really damn similar, which may be expected given that 
+#the coefficients for Boomers and Millennials do show striking similarities, with #the exception of race stuff. So the fact that a black person model looks so similar #between the two generations is perhaps a bit odd. 
+
+#trying now a white man with a high school diploma across different levels of income
+
+#First, Millennial
+
+setZ_genY_white <- setx(Z_genY, income = 1:7, education = 2, black = 0, hispanic = 0, 
+<<<<<<< HEAD
+                        female =0, vote_2008 = 1)
+=======
+                        female =0, vote_2008 = 0)
+
+>>>>>>> origin/master
+simZ_genY_white <- sim(Z_genY, x = setZ_genY_white)
+
+ci.plot(simZ_genY_white, ylim = 0:1, ylab = "Probability of voting",
+        main = "White Male Millenial with HS Edu", legcol = "black", leg = 1, )
+
+#With labels 
+ci.plot(simZ_genY_white, ylim = 0:1, ylab = "Probability of voting", axis(side = 1, at = 1:7, tick = TRUE, labels = c("20k", "20-40k", "45k-65k", "65k-90k", "90k-125k", "125-250k", "250,000k or more", ) 
+
+#Now, Baby Boomer
+setZ_boomer_white <- setx(Z_boomer, income = 1:7, education = 2, black = 0, hispanic = 0, 
+                        female =0, vote_2008 = 1)
+simZ_boomer_white <- sim(Z_boomer, x = setZ_boomer_white)
+ci.plot(simZ_boomer_white, ylim = 0:1, ylab = "Probability of voting",
+        main = "White Male Babyboomer with HS Edu", legcol = "black", leg = 1, )
+
+#With Labels (that don't work... )
+ci.plot(simZ_boomer_white, ylim = 0:1, ylab = "Probability of voting",axis(side = 1, at = 1:7, tick = TRUE, labels = c("20k", "20-40k", "45k-65k", "65k-90k", "90k-125k", "125-250k", "250,000k or more", ) 
+
+#again, plots between Boomers and Millennials look really damn similar
+
+```
+
+Now playing with and plotting predicted probabilities based on the model
+
+```{r}
+
+predicted_fit <- function(alpha, beta1, beta2, beta3, beta4, beta5, beta6, 
+    x1, x2, x3, x4, x5, x6, 
+    se1, se2, se3, se4, se5, se6)
+{
+lb_fun <- function(coef, se){
+    lb <- coef - (1.96 * se)
+    return(lb)
+}
+
+ub_fun <- function(coef, se){
+    ub <- coef + (1.96 * se)
+    return(ub)
+}
+
+fit <- alpha + beta1 * x1 + beta2 * x2 + beta3 * x3 + beta4 * x4 + beta5 * x5
+lb <- alpha + lb_fun(beta1, se1) * x1  + lb_fun(beta2, se2) * x2  + lb_fun(beta3, se3) * x3
+        lb_fun(beta4, se4) * x4 + lb_fun(beta5, se5) * x5 + lb_fun(beta6, se6) * x6
+ub <- alpha + ub_fun(beta1, se1) * x1  + ub_fun(beta2, se2) * x2  + ub_fun(beta3, se3) * x3
+        ub_fun(beta4, se4) * x4 + ub_fun(beta5, se5) *x5 + ub_fun(beta6, se6) *x6
+predictions <- c(lb, fit, ub)
+
+probs <- function(x) {(exp(x)) / (1 + exp(x)) }
+predictions <- probs(predictions)
+return(predictions) 
+}
+
+#let's start by comparing a black Millennial woman and a black Baby Boomer woman
+#across different levels of education. Let's assume she didn't vote in 2008 and
+#her income is moderate (3). The lines of code below simply gives us our predicted
+#probabilities, along with confidence intervals.
+
+black_genY_ed1 <- predicted_fit(-1.42663, 0.27571, 0.10578, 1.08370, 0.97081, 0.63016, 
+                                0.19622, 1, 1, 0, 1, 0, 3, 0.13361, 0.23487, 0.24849, 
+                                0.39274, 0.35245, 0.07876)
+
+black_genY_ed2 <- predicted_fit(-1.42663, 0.27571, 0.10578, 1.08370, 0.97081, 0.63016, 
+                                0.19622, 2, 1, 0, 1, 0, 3, 0.13361, 0.23487, 0.24849, 
+                                0.39274, 0.35245, 0.07876)
+
+black_genY_ed3 <- predicted_fit(-1.42663, 0.27571, 0.10578, 1.08370, 0.97081, 0.63016, 
+                                0.19622, 3, 1, 0, 1, 0, 3, 0.13361, 0.23487, 0.24849, 
+                                0.39274, 0.35245, 0.07876)
+
+black_genY_ed4 <- predicted_fit(-1.42663, 0.27571, 0.10578, 1.08370, 0.97081, 0.63016, 
+                                0.19622, 4, 1, 0, 1, 0, 3, 0.13361, 0.23487, 0.24849, 
+                                0.39274, 0.35245, 0.07876)
+
+black_genY_ed5 <- predicted_fit(-1.42663, 0.27571, 0.10578, 1.08370, 0.97081, 0.63016, 
+                                0.19622, 5, 1, 0, 1, 0, 3, 0.13361, 0.23487, 0.24849, 
+                                0.39274, 0.35245, 0.07876)
+
+black_boomer_ed1 <- predicted_fit(-1.49411, 0.32012, 0.18731, 2.67234, -0.73006, -0.12489,
+                                  0.17901, 1, 1, 0, 1, 0, 3, 0.12001, 0.25347, 0.25373,
+                                  0.35665, 0.39013, 0.06914)
+
+black_boomer_ed2 <- predicted_fit(-1.49411, 0.32012, 0.18731, 2.67234, -0.73006, -0.12489,
+                                  0.17901, 2, 1, 0, 1, 0, 3, 0.12001, 0.25347, 0.25373,
+                                  0.35665, 0.39013, 0.06914)
+
+black_boomer_ed3 <- predicted_fit(-1.49411, 0.32012, 0.18731, 2.67234, -0.73006, -0.12489,
+                                  0.17901, 3, 1, 0, 1, 0, 3, 0.12001, 0.25347, 0.25373,
+                                  0.35665, 0.39013, 0.06914)
+
+black_boomer_ed4 <- predicted_fit(-1.49411, 0.32012, 0.18731, 2.67234, -0.73006, -0.12489,
+                                  0.17901, 4, 1, 0, 1, 0, 3, 0.12001, 0.25347, 0.25373,
+                                  0.35665, 0.39013, 0.06914)
+
+black_boomer_ed5 <- predicted_fit(-1.49411, 0.32012, 0.18731, 2.67234, -0.73006, -0.12489,
+                                  0.17901, 5, 1, 0, 1, 0, 3, 0.12001, 0.25347, 0.25373,
+                                  0.35665, 0.39013, 0.06914)
+
+#now we take those predictions and put them in a dataframe that we can use for 
+#plotting and other functions
+library(dplyr)
+blackfem_ed_genY <- rbind(black_genY_ed1, black_genY_ed2, black_genY_ed3, black_genY_ed4,
+                   black_genY_ed5)  %>% as.data.frame()
+blackfem_ed_boomer <- rbind(black_boomer_ed1, black_boomer_ed2, black_boomer_ed3,
+                   black_boomer_ed4, black_boomer_ed5) %>% as.data.frame()
+blackfem_ed_genY$education <- c("Below high school", "High school", "Some post-high", 
+                                "Bachelor", "Graduate")
+blackfem_ed_boomer$education <- c("Below high school", "High school", "Some post-high", 
+                                "Bachelor", "Graduate")
+colnames(blackfem_ed_genY) <- c("lb", "probability", "education")
+colnames(blackfem_ed_boomer) <- c("lb", "probability", "education")
+rownames(blackfem_ed_genY) <- c("Below high school", "High school", "Some post-high", 
+                                "Bachelor", "Graduate")
+rownames(blackfem_ed_boomer) <- c("Below high school", "High school", "Some post-high", 
+                                "Bachelor", "Graduate")
+
+# want to have lines for the two generation we are comparing 
+library(ggplot2)
+#ggplot(blackfem_genY, aes(x = education, y = probability, group = 1)) +
+#  geom_ribbon(aes(ymin = LL, ymax = UL), alpha = .2) +
+#  geom_line(aes(colour = education), size=1)
+
+ggplot(blackfem_ed_genY, aes(x = factor(1:5), y = probability, group = 1)) +
+  geom_line() + 
+              geom_line(data = blackfem_ed_boomer, aes(y = probability, color = probability)) +
+  labs(x = "Education", y = "Probability of voting", title = "Millennial vs Boomer") +    scale_x_discrete(labels = c("Below high school", "High school", "Some post-high", 
+                                "Bachelor", "Graduate")) +
+  geom_ribbon(data=blackfem_ed_genY,aes(ymin=lb,ymax=ub),alpha=0.1) +
+  geom_ribbon(data=blackfem_ed_boomer,aes(ymin=lb,ymax=ub),alpha=0.3) 
+
+#the code above works. still need to adjust colors and aesthetics. and also to figure out
+#why our confidence bands are so huge. makes things look really imprecise. 
+
+```
+
+Assessing the model fit. I draw on the UCLA page here for this: 
+http://www.ats.ucla.edu/stat/r/dae/logit.htm.
+
+The test below decides whether the model is a better predictor than a model with just 
+an intercept and nothing else (a null model). The survey-weighted one, simply, isn't. It's awful, according to this test. But running our model without the survey weights it's incredible. 
+
+```{r}
+
+with(M_genY, null.deviance - deviance) #gives chi-square value
+with(M_genY, df.null - df.residual) #gives degrees of freedom
+with(M_genY, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)) #gives p value
+
+with(M_boomer, null.deviance - deviance) #gives chi-square value
+with(M_boomer, df.null - df.residual) #gives degrees of freed
+with(M_boomer, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)) 
+
+#trying the model without survey weights
+M_genY2 <- glm(vote_2012 ~ education + female + vote_2008 + black + hispanic + income, data = anes_genY, family = "binomial") 
+
+with(M_genY2, null.deviance - deviance) #gives chi-square value
+with(M_genY2, df.null - df.residual) #gives degrees of freed
+with(M_genY2, pchisq(null.deviance - deviance, df.null - df.residual, lower.tail = FALSE)) 
+
+#Hosmer-Lemeshow Goodness of Fit
+install.packages("ResourceSelection")
+library(ResourceSelection)
+hoslem.test(anes_genY$vote_2012, fitted(M_genY))
+
+
+
+````
+
+
+Notes from class Nov. 18
+
+Should have correlation matrix like on slide 22 of the Nov. 18 class
+
+Run the simulated stuff he did for presentation purposes. Need a regression table
+and other stuff, but for highlighting the main effects that's simply not
+a good idea. Simluation helps show the results and how confident we are
+about those results. Gives an expectation of what we would see in the "real world"
+based on the assumptions of our model. 
