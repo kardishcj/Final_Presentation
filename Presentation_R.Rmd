@@ -7,7 +7,8 @@ output: ioslides_presentation
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
-source("final_cleaning.R")
+source("cleaning.R")
+#rm(list = ls()) 
 ```
 
 ## Research Question 
@@ -65,7 +66,7 @@ Independent variables are:
 ## Model results {.flexbox .vcenter}
  
 ```{r echo = FALSE, results='asis', message=FALSE}
-#setwd('C:/Users/Chris/Documents/GitHub/Presentation')
+#setwd('C:/Users/Chris/Documents/GitHub/Final_Presentation')
 library(stargazer)
 stargazer(M_genY, M_genX, M_boomer, M_silent, apply.coef = exp,
           type = "html", dep.var.labels = "Probability of voting in 2012", 
