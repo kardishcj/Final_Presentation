@@ -63,13 +63,14 @@ Independent variables are:
 - Conducted in English and Spanish 
 - Weighted survey 
 
-## Model results {.flexbox .vcenter}
+## Model results {.flexbox .vcenter .smaller} 
  
-```{r echo = FALSE, results='asis', message=FALSE}
+```{r echo = FALSE, results='asis', message=FALSE,}
 #setwd('C:/Users/Chris/Documents/GitHub/Final_Presentation')
 library(stargazer)
-stargazer(M_genY, M_genX, M_boomer, M_silent, apply.coef = exp,
-          type = "html", dep.var.labels = "Probability of voting in 2012", 
+stargazer(M_genY, M_genX, M_boomer, M_silent, apply.coef = exp, font.size = 'tiny',
+          type = "html", float = FALSE, 
+          dep.var.labels = "Probability of voting in 2012", 
           column.labels = c("Gen Y", "Gen X", "Boomers", "Silent"))
 
 ```
@@ -78,42 +79,63 @@ stargazer(M_genY, M_genX, M_boomer, M_silent, apply.coef = exp,
 ```{r, echo=FALSE, include=FALSE, message=FALSE}
 library(Zelig)
 Z_genY <- zelig(vote_2012 ~ education + female + vote_2008 + black + hispanic + income, model = "logit.survey", weights=~weights, strata=~strata, data = anes_genY)
-setZ_genY_black <- setx(Z_genY, education = 1:5, black = 1, hispanic = 0, income = 3, 
-                        female = 1, vote_2008 = 0)
-simZ_genY_black <- sim(Z_genY, x = setZ_genY_black)
-Z_boomer <- zelig(vote_2012 ~ education + female + vote_2008 + black + hispanic + income, model = "logit.survey", weights=~weights, strata=~strata, data = anes_boomer)
-setZ_boomer_black <- setx(Z_genY, education = 1:5, black = 1, hispanic = 0, income = 3, 
-                          female = 1, vote_2008 = 0)
-simZ_boomer_black <- sim(Z_boomer, x = setZ_boomer_black)
+Z_boomer <- zelig(vote_2012 ~ education + female + vote_2008 + black + hispanic + income, model = "logit.survey", weights=~weights, strata=~strata, 
+                  data = anes_boomer)
+
 ```
 
-```{r, message=FALSE, echo = FALSE, fig.align='center', fig.show='hold', fig.width=5, fig.height=4}
+```{r, message=FALSE, echo = FALSE, fig.align='center', fig.show='hold', fig.width=4, fig.height=5}
+setZ_genY_black <- setx(Z_genY, education = 1:5, black = 1, hispanic = 0, 
+                        income = 3, female = 1, vote_2008 = 0)
+simZ_genY_black <- sim(Z_genY, x = setZ_genY_black)
 ci.plot(simZ_genY_black, ylim = 0:1, ylab = "Probability of voting", 
         main = "Black Millennial Woman")
+setZ_boomer_black <- setx(Z_genY, education = 1:5, black = 1, hispanic = 0, 
+                          income = 3, female = 1, vote_2008 = 0)
+simZ_boomer_black <- sim(Z_boomer, x = setZ_boomer_black)
 ci.plot(simZ_boomer_black, ylim = 0:1, ylab = "Probability of voting", 
         main = "Black Baby Boomer Woman")
 #out.width=c('400px', '400px')
+
 ```
 
 ## How the model plays out in simulation (part 2) {.columns-2}
-```{r, message=FALSE, echo = FALSE, fig.align='center', fig.show='hold', fig.width=4, fig.height=4}
-setZ_genY_white <- setx(Z_genY, income = 1:7, education = 2, black = 0, hispanic = 0, 
-                        female =0, vote_2008 = 1)
+```{r, message=FALSE, echo = FALSE, fig.align='center', fig.show='hold', fig.width=3.5, fig.height=5}
+setZ_genY_white <- setx(Z_genY, income = 1:7, education = 2, black = 0, 
+                        hispanic = 0, female =0, vote_2008 = 0)
 simZ_genY_white <- sim(Z_genY, x = setZ_genY_white)
-ci.plot(simZ_genY_white, ylim = 0:1, ylab = "Probability of voting", main = "White Millennial Man")
+ci.plot(simZ_genY_white, ylim = 0:1, ylab = "Probability of voting", 
+        main = "White Millennial Man")
 #Now, Baby Boomer
-setZ_boomer_white <- setx(Z_boomer, income = 1:7, education = 2, black = 0, hispanic = 0, 
-                        female =0, vote_2008 = 1)
+setZ_boomer_white <- setx(Z_boomer, income = 1:7, education = 2, black = 0, 
+                          hispanic = 0, female =0, vote_2008 = 0)
 simZ_boomer_white <- sim(Z_boomer, x = setZ_boomer_white)
-ci.plot(simZ_boomer_white, ylim = 0:1, ylab = "Probability of voting", main = "White Baby Boomer Man")
+ci.plot(simZ_boomer_white, ylim = 0:1, ylab = "Probability of voting", 
+        main = "White Baby Boomer Man")
 
 ```
 
-## Discussion 
+## How the model plays out in simulation (part 3) {.columns-2}
+```{r, message=FALSE, echo = FALSE, fig.align='center', fig.show='hold', fig.width=3.5, fig.height=5}
+setZ_genY_white <- setx(Z_genY, income = 1:7, education = 2, black = 0, 
+                        hispanic = 0, female =0, vote_2008 = 1)
+simZ_genY_white <- sim(Z_genY, x = setZ_genY_white)
+ci.plot(simZ_genY_white, ylim = 0:1, ylab = "Probability of voting", 
+        main = "White Millennial Man")
+#Now, Baby Boomer
+setZ_boomer_white <- setx(Z_boomer, income = 1:7, education = 2, black = 0, 
+                          hispanic = 0, female =0, vote_2008 = 1)
+simZ_boomer_white <- sim(Z_boomer, x = setZ_boomer_white)
+ci.plot(simZ_boomer_white, ylim = 0:1, ylab = "Probability of voting", 
+        main = "White Baby Boomer Man")
+
+```
+
+## Limitations 
 
 >- Issues with external valididty
 >- Relavtively low survey response 
 >- Self surveys
->- Psuedo-R squared issues 
+>- Goodness of Fit  
 
 
