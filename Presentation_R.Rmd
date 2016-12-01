@@ -138,4 +138,21 @@ ci.plot(simZ_boomer_white, ylim = 0:1, ylab = "Probability of voting",
 >- Self surveys
 >- Goodness of Fit  
 
+## Goodness of Fit
+Does the model with predictors fit significantly better than a model with just an intercept (a null model)? 
+```{r, echo=TRUE}
+with(M_genY, null.deviance - deviance) #gives chi-square value
+with(M_genY, df.null - df.residual) #gives degrees of freedom
+with(M_genY, pchisq(null.deviance - deviance, 
+                    df.null - df.residual, 
+                    lower.tail = FALSE)) #gives p value
+```
 
+## Goodness of Fit (part 2)
+```{r}
+
+rocplot(Z_genY, Z_boomer, col1 = 'blue', col2 = 'red')
+legend("left", c("Millennial","Baby Boomer"), 
+       lty=c(1,1), lwd=c(2.5,2.5), col=c('blue','red'))
+
+```
