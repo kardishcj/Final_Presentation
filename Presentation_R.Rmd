@@ -40,11 +40,11 @@ And...
 
 ## Methodology 
 
-We opted for a logit model because we want to assess if traditional indicators hold the same predictive power across generations.  
+We opted for a logit model because we want to assess if traditional indicators hold the same predictive power across generations.   
 
 Our dependent variable is binary: 0 - did not vote in 2012, 1 - voted in 2012. 
 
-Independent variables are: 
+Independent variables (same model across 4 generations) are: 
 
 - education
 - gender (female dummy)
@@ -65,6 +65,8 @@ Independent variables are:
 
 ## Model results {.flexbox .vcenter .smaller} 
  
+-Expressed as odds-ratios (exponentiated coefficients), so
+can be interpreted as factor change in odds of voting in 2012
 ```{r echo = FALSE, results='asis', message=FALSE,}
 #setwd('C:/Users/Chris/Documents/GitHub/Final_Presentation')
 library(stargazer)
@@ -138,7 +140,7 @@ ci.plot(simZ_boomer_white, ylim = 0:1, ylab = "Probability of voting",
 >- Self surveys
 >- Goodness of Fit  
 
-## Goodness of Fit
+## Goodness of Fit (Likelihood-ratio test)
 Does the model with predictors fit significantly better than a model with just an intercept (a null model)? 
 ```{r, echo=TRUE}
 with(M_genY, null.deviance - deviance) #gives chi-square value
@@ -148,7 +150,8 @@ with(M_genY, pchisq(null.deviance - deviance,
                     lower.tail = FALSE)) #gives p value
 ```
 
-## Goodness of Fit (part 2)
+## Goodness of Fit (ROC)
+Receiver operating characteristic plot
 ```{r}
 
 rocplot(Z_genY, Z_boomer, col1 = 'blue', col2 = 'red')
