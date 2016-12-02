@@ -135,9 +135,9 @@ ci.plot(simZ_boomer_white, ylim = 0:1, ylab = "Probability of voting",
 
 ## Limitations 
 
->- Issues with external valididty
+>- Issues with external validity
 >- Relavtively low survey response 
->- Self surveys
+>- Self survey & self report
 >- Goodness of Fit  
 
 ## Goodness of Fit (Likelihood-ratio test)
